@@ -18,13 +18,13 @@ int index = 0;                  // the index of the current reading
 int total = 0;                  // the running total
 int average = 0;                // the average
 
-const int setTemp = 26;               // temperature when the relay turns on
-const int hysterese = 3.15;            // Hysterese
+const int setTemp = 26;         // temperature when the relay turns on
+const int hysteresis = 3.5;      // hysteresis
 
-int RECV_PIN = 10;
-const int relePin = 8;                
-const int rPin = 6;                   // pin connected to the red LED
-const int gPin = 9;                   // pin connected to the green LED
+const int RECV_PIN = 10;
+const int relayPin = 8;                
+const int rPin = 6;             // pin connected to the red LED
+const int gPin = 9;             // pin connected to the green LED
 
 float temp;
 float celcius;
@@ -43,7 +43,7 @@ void setup()
   Serial.begin(9600);
   pinMode(rPin, OUTPUT);
   pinMode(gPin, OUTPUT);
-  pinMode(relePin, OUTPUT); 
+  pinMode(relayPin, OUTPUT); 
   pinMode(lcdPin, OUTPUT);
   digitalWrite(lcdPin, OUTPUT);
   lcd.begin(16, 2);
@@ -91,35 +91,36 @@ void loop() {
   //temp = (average*5000)/1024; //Converts raw sensos value to voltage value
   //celcius = temp/10;//sensor value*5000/bit^10 =1024, 10mV/1 degree celcius  
   Serial.println(temp);
-  Serial.print(temp);
   Serial.print("\t");
-  lcd.setCursor(0, 1);
-  lcd.print(temp);
-  lcd.setCursor(4, 1);
-  lcd.print((char)223); 
-  delay(50);        // delay in between reads for stability 
+  delay(25);        // delay in between reads for stability 
   if (irrecv.decode(&results)) {
       if (results.value == 0xFF52AD || temp >= setTemp) // #9 on remote
       {
         digitalWrite(rPin, HIGH);
         digitalWrite(gPin, LOW);
-        digitalWrite(relePin, HIGH);
-        delay(5);
+        digitalWrite(relayPin, HIGH);
+        lcd.setCursor(0, 1);
+        lcd.print(temp);
+        lcd.setCursor(4, 1);
+        lcd.print((char)223); 
         Serial.print("off");
         lcd.setCursor(6, 1);
         lcd.println("       OFF");
+        
       } 
-      else if (results.value == 0xFF4AB5 && temp - hysterese <= setTemp )
-      { // #8 on remote
-      digitalWrite(relePin, LOW);
-      digitalWrite(rPin, LOW);
-      digitalWrite(gPin, HIGH);
-      Serial.print("on");
-      lcd.setCursor(6, 1);
-      lcd.println("        ON ");
+      else if (results.value == 0xFF4AB5 || temp - hysteresis <= setTemp ) // #8 on remote
+      {
+        digitalWrite(relayPin, LOW);
+        digitalWrite(rPin, LOW);
+        digitalWrite(gPin, HIGH);
+        lcd.setCursor(0, 1);
+        lcd.print(temp + 4);  // temp adjusted after a 40 mili voltage drop when the fan turns on
+        lcd.setCursor(4, 1);
+        lcd.print((char)223); 
+        Serial.print("on");
+        lcd.setCursor(6, 1);
+        lcd.println("        ON ");
       }   
-    irrecv.resume(); // Receive the next value
+    irrecv.resume(); // Receive the next IR signal
  }
 }
-
-
